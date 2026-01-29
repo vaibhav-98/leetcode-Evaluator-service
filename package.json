@@ -1,0 +1,26 @@
+{
+  "name": "leetcode-evaluator-service",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "npx tsc",
+    "watch": "npx tsc -w",
+    "prestart": "npm run build",
+    "start": "npx nodemon dist/index.js",
+    "dev": "npx concurrently --kill-others\"npm run watch\" \"npm start\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "nodemon": "^3.1.11",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "concurrently": "^9.2.1",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1"
+  }
+}
