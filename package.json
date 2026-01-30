@@ -7,7 +7,8 @@
     "watch": "npx tsc -w",
     "prestart": "npm run build",
     "start": "npx nodemon dist/index.js",
-    "dev": "npx concurrently --kill-others\"npm run watch\" \"npm start\""
+    "dev": "npx concurrently --kill-others \"npm run watch\" \"npm start\"",
+    "lint": "npx eslint src/"
   },
   "keywords": [],
   "author": "",
@@ -19,8 +20,14 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.54.0",
+    "bullmq": "^5.67.2",
     "concurrently": "^9.2.1",
     "dotenv": "^17.2.3",
-    "express": "^5.2.1"
+    "eslint": "^9.39.2",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "express": "^5.2.1",
+    "ioredis": "^5.9.2"
   }
 }
