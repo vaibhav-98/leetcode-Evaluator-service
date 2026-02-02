@@ -20,6 +20,8 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@bull-board/api": "^6.16.4",
+    "@bull-board/express": "^6.16.4",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
     "bullmq": "^5.67.2",
