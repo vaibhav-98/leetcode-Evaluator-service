@@ -22,10 +22,12 @@
   "dependencies": {
     "@bull-board/api": "^6.16.4",
     "@bull-board/express": "^6.16.4",
+    "@types/dockerode": "^4.0.1",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
     "bullmq": "^5.67.2",
     "concurrently": "^9.2.1",
+    "dockerode": "^4.0.9",
     "dotenv": "^17.2.3",
     "eslint": "^9.39.2",
     "eslint-plugin-simple-import-sort": "^12.1.1",

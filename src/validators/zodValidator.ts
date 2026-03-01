@@ -5,7 +5,7 @@ export const validate = (schema: ZodSchema<any>) => (req: Request, res: Response
   try {
     schema.parse({
         ...req.body
-    }); // Validating only the body as per the schema
+    }); // Validating only the body as per the schema 
     next();
   } catch (error) {
     console.error(error);
@@ -17,3 +17,4 @@ export const validate = (schema: ZodSchema<any>) => (req: Request, res: Response
     });
   }
 };
+
