@@ -5,6 +5,7 @@
 import { JAVA_IMAGE } from '../utils/constants';
 import createContainer from './containerFactory';
 import decodeDockerStream from './dockerHelper';
+import pullImage from './pullImage';
 
 async function runJava(code: string, inputTestCase: string) {
 
@@ -12,9 +13,12 @@ async function runJava(code: string, inputTestCase: string) {
     const rowLogBuffer: Buffer[] = [] ;
    
     console.log("Initialising a new java docker container");
-    const runCommand = `echo '${code.replace(/'/g, `'\\"`)}' > Main.java && javac Main.java && echo '${inputTestCase.replace(/'/g, `'\\"`)}' | java Main`;
+
+    await pullImage(JAVA_IMAGE)
     
-    console.log("run commond >>",runCommand);
+    const runCommand = `echo '${code.replace(/'/g, `'\\"`)}' > Main.java && javac Main.java && echo '${inputTestCase.replace(/'/g, `'\\"`)}' | java Main`;
+
+    //console.log("run commond >>",runCommand);
     
     const javaDockerContainer = await createContainer(JAVA_IMAGE, [
         '/bin/sh', 

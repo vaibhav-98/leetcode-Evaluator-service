@@ -10,7 +10,10 @@ import apiRouter from "./routes";
 import SampleWorker from "./workers/sampleWorker";
 //import runPython from './containers/runPythonDocker';
 //import runJava from './containers/runJavaDocker';
-import runCpp from './containers/runCpp';
+//import runCpp from './containers/runCpp';
+import SubmissionWorker from './workers/submissionWorker';
+import { submission_queue } from './utils/constants';
+import submissionQueueProducer from './producers/submissionQueueProducer';
 
 //import sampleQueueProducer from "./producers/sampleQueueProducer";
 
@@ -31,9 +34,55 @@ app.listen(serverConfig.PORT, () => {
     console.log(`Server started at *:${serverConfig.PORT}`);
     console.log("Bull Board UI: http://localhost:5000/admin/queues");
      SampleWorker('SampleQueue');
+     SubmissionWorker(submission_queue)
  
 
 
+  const userCode = `
+  
+    class Solution {
+      public:
+      vector<int> permute() {
+          vector<int> v;
+          v.push_back(10);
+          return v;
+      }
+    };
+  `;
+
+  const code = `
+  #include<iostream>
+  #include<vector>
+  #include<stdio.h>
+  using namespace std;
+  
+  ${userCode}
+
+  int main() {
+
+    Solution s;
+    vector<int> result = s.permute();
+    for(int x : result) {
+      cout<<x<<" ";
+    }
+    cout<<endl;
+    return 0;
+  }
+  `;
+
+const inputCase = `10
+`;
+
+submissionQueueProducer({"1234": {
+  language: "CPP",
+  inputCase,
+  code
+}});
+
+
+
+//===================== this is c++ code============================//
+/*
    const code = ` 
     #include<iostream>
     using namespace std;
@@ -53,6 +102,9 @@ app.listen(serverConfig.PORT, () => {
     const inputCase = `10`;
 
  runCpp(code, inputCase);   
+
+*/
+
 
 //============ this is Java code ==========================//
 /*
