@@ -9,7 +9,8 @@ import { serverAdapter } from "./config/bullBoard";
 import apiRouter from "./routes";
 import SampleWorker from "./workers/sampleWorker";
 //import runPython from './containers/runPythonDocker';
-import runJava from './containers/runJavaDocker';
+//import runJava from './containers/runJavaDocker';
+import runCpp from './containers/runCpp';
 
 //import sampleQueueProducer from "./producers/sampleQueueProducer";
 
@@ -33,7 +34,28 @@ app.listen(serverConfig.PORT, () => {
  
 
 
+   const code = ` 
+    #include<iostream>
+    using namespace std;
 
+    int main () {
+     int x;
+     cin>>x;
+     cout<<"Value of x is "<<x<<" ";
+     for(int i =0; i < x; i++ ) {
+     cout<<i<< " ";
+     }
+     cout<<endl;
+     return 0;
+    }
+    `;
+
+    const inputCase = `10`;
+
+ runCpp(code, inputCase);   
+
+//============ this is Java code ==========================//
+/*
 const code = `
 import java.util.*;
 public class Main {
@@ -51,6 +73,8 @@ public class Main {
 const inputCase = `10`;
 
 runJava(code, inputCase);
+
+*/
 
      
 // ======= this is python code ===================
