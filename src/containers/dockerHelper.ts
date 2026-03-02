@@ -20,7 +20,7 @@ export default function decodeDockerStream(buffer: Buffer) : DockerStreamOutput{
 
         // This length variable hold the length of the value 
         // We will read this variable on an offset of 4 bytes from the start of the chunk
-        const length = buffer.readUint32BE(offset + 4);
+        const length = buffer.readUint32BE(offset + 4); // How many bytes of data
 
         // as now we have read the header, we can move forward to the value of the chunk
         offset += DOCKER_STREAM_HEADER_SIZE;

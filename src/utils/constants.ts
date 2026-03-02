@@ -1,4 +1,5 @@
 export const PYTHON_IMAGE = "python:3.8-slim";
+export const JAVA_IMAGE = "eclipse-temurin:11-jdk"; //  docker pull  openjdk:11-jdk-slim
 
 
 
