@@ -10,42 +10,42 @@ class CppExecutor implements CodeExecutorStrategy {
 
         console.log("C++ executor called");
 
-        // This buffer stores raw docker logs (stdout + stderr)
+        // Buffer to store docker logs (stdout + stderr)
         const rawLogBuffer: Buffer[] = [];
 
-        // Ensure the docker image exists locally (pull if not present)
+        // Ensure docker image is available locally
         await pullImage(CPP_IMAGE);
 
         console.log("Initialising a new C++ docker container");
 
-        // Command executed inside the docker container
-        // 1. Save code into main.cpp
-        // 2. Compile using g++
-        // 3. Pipe input test case to the executable
+        // Command to:
+        // 1. Save code into file
+        // 2. Compile
+        // 3. Execute with input
         const runCommand =
             `echo '${code.replace(/'/g, `'\\"`)}' > main.cpp && g++ main.cpp -o main && echo '${inputTestCase.replace(/'/g, `'\\"`)}' | ./main`;
 
-        // Create docker container with the command
+        // Create docker container
         const cppDockerContainer = await createContainer(CPP_IMAGE, [
             '/bin/sh',
             '-c',
             runCommand
         ]);
 
-        // Start / boot the container
+        // Start container
         await cppDockerContainer.start();
 
         console.log("Started the docker container");
 
-        // Get container logs
+        // Fetch logs from container
         const loggerStream = await cppDockerContainer.logs({
-            stdout: true,       // capture standard output
-            stderr: true,       // capture errors
+            stdout: true,
+            stderr: true,
             timestamps: false,
-            follow: true        // stream logs instead of returning once
+            follow: true
         });
 
-        // Every chunk of log data is pushed into the buffer
+        // Push log chunks into buffer
         loggerStream.on('data', (chunk) => {
             rawLogBuffer.push(chunk);
         });
@@ -55,32 +55,39 @@ class CppExecutor implements CodeExecutorStrategy {
             // Decode docker stream into readable output
             const codeResponse: string = await this.fetchDecodedStream(loggerStream, rawLogBuffer);
 
-            // Compare program output with expected output
-            if (codeResponse.trim() === outputCase.trim()) {
-                return { output: codeResponse, status: "SUCCESS" };
+            // Fallback protection (IMPORTANT)
+            const safeOutput = codeResponse || "";
+            const safeExpected = outputCase || "";
+
+            // Debug logs (helps during development)
+            console.log("Actual Output:", safeOutput);
+            console.log("Expected Output:", safeExpected);
+
+            // Normalize output (handles newline differences)
+            if (this.normalize(safeOutput) === this.normalize(safeExpected)) {
+                return { output: safeOutput, status: "SUCCESS" };
             } else {
-                return { output: codeResponse, status: "WA" }; // Wrong Answer
+                return { output: safeOutput, status: "WA" }; // Wrong Answer
             }
 
         } catch (error) {
 
             console.log("Error occurred", error);
 
-            // If program exceeded time limit
+            // If time limit exceeded → kill container
             if (error === "TLE") {
-                await cppDockerContainer.kill(); // stop container immediately
+                await cppDockerContainer.kill();
             }
 
             return { output: error as string, status: "ERROR" };
 
         } finally {
 
-            // Remove container after execution to avoid resource leak
+            // Always remove container (VERY IMPORTANT)
             await cppDockerContainer.remove();
 
         }
     }
-
 
     fetchDecodedStream(
         loggerStream: NodeJS.ReadableStream,
@@ -89,33 +96,44 @@ class CppExecutor implements CodeExecutorStrategy {
 
         return new Promise((res, rej) => {
 
-            // Timeout protection (Time Limit Exceeded)
+            // Timeout protection (prevents infinite loops)
             const timeout = setTimeout(() => {
                 console.log("Timeout called");
                 rej("TLE");
             }, 2000);
 
-            // Triggered when docker stops sending logs
+            // When docker finishes execution
             loggerStream.on('end', () => {
 
                 clearTimeout(timeout);
 
-                // Combine all buffer chunks into a single buffer
+                // Merge all chunks into one buffer
                 const completeBuffer = Buffer.concat(rawLogBuffer);
 
                 // Decode docker multiplexed stream
                 const decodedStream = decodeDockerStream(completeBuffer);
 
-                // If compilation/runtime error occurred
-                if (decodedStream.stderr) {
-                    rej(decodedStream.stderr);
+                console.log("Decoded Stream:", decodedStream);
+
+                // Fallback protection (VERY IMPORTANT FIX)
+                const stdout = decodedStream.stdout || "";
+                const stderr = decodedStream.stderr || "";
+
+                // If compilation/runtime error
+                if (stderr) {
+                    rej(stderr);
                 } else {
-                    res(decodedStream.stdout);
+                    res(stdout);
                 }
 
             });
 
         });
+    }
+
+    // Normalize output (like real coding platforms)
+    normalize(str: string = ""): string {
+        return str.trim().replace(/\r\n/g, "\n");
     }
 
 }

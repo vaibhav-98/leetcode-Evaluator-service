@@ -13,7 +13,7 @@ import SampleWorker from "./workers/sampleWorker";
 //import runCpp from './containers/runCpp';
 import SubmissionWorker from './workers/submissionWorker';
 import { submission_queue } from './utils/constants';
-import submissionQueueProducer from './producers/submissionQueueProducer';
+//import submissionQueueProducer from './producers/submissionQueueProducer';
 
 //import sampleQueueProducer from "./producers/sampleQueueProducer";
 
@@ -38,6 +38,7 @@ app.listen(serverConfig.PORT, () => {
  
 
 
+     /*
   const userCode = `
   
     class Solution {
@@ -79,6 +80,8 @@ submissionQueueProducer({"1234": {
   code
 }});
 
+
+*/
 
 
 //===================== this is c++ code============================//
