@@ -4,6 +4,7 @@ import { ExpressAdapter } from "@bull-board/express";
 
 import sampleQueue from "../queues/sampleQueue";
 import submissionQueue from "../queues/submissionQueue";
+import EvaluationQueue from "../queues/EvaluationQueue";
 
 // create express adapter
 const serverAdapter = new ExpressAdapter();
@@ -16,6 +17,7 @@ createBullBoard({
   queues: [
     new BullMQAdapter(sampleQueue),
     new BullMQAdapter(submissionQueue),
+     new BullMQAdapter(EvaluationQueue),
   ],
   serverAdapter,
 });
