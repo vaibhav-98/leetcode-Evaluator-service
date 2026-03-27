@@ -3,139 +3,107 @@ import { CPP_IMAGE } from '../utils/constants';
 import createContainer from './containerFactory';
 import decodeDockerStream from './dockerHelper';
 import pullImage from './pullImage';
+import { TestCases } from '../types/testCases';
 
 class CppExecutor implements CodeExecutorStrategy {
 
-    async execute(code: string, inputTestCase: string, outputCase: string): Promise<ExecutionResponse> {
+    async execute(code: string, testCases: TestCases): Promise<ExecutionResponse> {
+        console.log("Cpp executor called for multiple test cases");
 
-        console.log("C++ executor called");
-
-        // Buffer to store docker logs (stdout + stderr)
         const rawLogBuffer: Buffer[] = [];
-
-        // Ensure docker image is available locally
         await pullImage(CPP_IMAGE);
 
-        console.log("Initialising a new C++ docker container");
+        let runCommand = `echo '${code.replace(/'/g, `'\\"`)}' > main.cpp && if g++ main.cpp -o main 2> compile_error.txt; then echo "COMPILATION_SUCCESS"`;
+        
+        testCases.forEach((testCase, index) => {
+            runCommand += ` && echo "TESTCASE_BEGIN_${index}" && echo '${testCase.input.replace(/'/g, `'\\"`)}' | ./main && echo "TESTCASE_END_${index}"`;
+        });
 
-        // Command to:
-        // 1. Save code into file
-        // 2. Compile
-        // 3. Execute with input
-        const runCommand =
-            `echo '${code.replace(/'/g, `'\\"`)}' > main.cpp && g++ main.cpp -o main && echo '${inputTestCase.replace(/'/g, `'\\"`)}' | ./main`;
+        runCommand += `; else echo "COMPILATION_ERROR" && cat compile_error.txt; fi`;
 
-        // Create docker container
         const cppDockerContainer = await createContainer(CPP_IMAGE, [
-            '/bin/sh',
+            '/bin/sh', 
             '-c',
             runCommand
-        ]);
+        ]); 
 
-        // Start container
         await cppDockerContainer.start();
 
-        console.log("Started the docker container");
-
-        // Fetch logs from container
         const loggerStream = await cppDockerContainer.logs({
             stdout: true,
             stderr: true,
             timestamps: false,
             follow: true
         });
-
-        // Push log chunks into buffer
+        
         loggerStream.on('data', (chunk) => {
             rawLogBuffer.push(chunk);
         });
 
         try {
-
-            // Decode docker stream into readable output
-            const codeResponse: string = await this.fetchDecodedStream(loggerStream, rawLogBuffer);
-
-            // Fallback protection (IMPORTANT)
-            const safeOutput = codeResponse || "";
-            const safeExpected = outputCase || "";
-
-            // Debug logs (helps during development)
-            console.log("Actual Output:", safeOutput);
-            console.log("Expected Output:", safeExpected);
-
-            // Normalize output (handles newline differences)
-            if (this.normalize(safeOutput) === this.normalize(safeExpected)) {
-                return { output: safeOutput, status: "SUCCESS" };
-            } else {
-                return { output: safeOutput, status: "WA" }; // Wrong Answer
+            const decodedResult = await this.fetchDecodedStream(loggerStream, rawLogBuffer);
+            
+            // Check for Compilation Error
+            if (decodedResult.includes("COMPILATION_ERROR")) {
+                const errorLog = decodedResult.replace("COMPILATION_ERROR", "").trim();
+                return { output: errorLog, status: "CE" };
             }
+
+            // Parse test case outputs
+            for (let i = 0; i < testCases.length; i++) {
+                const beginTag = `TESTCASE_BEGIN_${i}`;
+                const endTag = `TESTCASE_END_${i}`;
+                
+                const startIdx = decodedResult.indexOf(beginTag);
+                const endIdx = decodedResult.indexOf(endTag);
+                
+                if (startIdx === -1 || endIdx === -1) {
+                    return { output: "System Error or Runtime Error: Missing test case output", status: "RE" };
+                }
+
+                const actualOutput = decodedResult.substring(startIdx + beginTag.length, endIdx).trim();
+                const expectedOutput = testCases[i].output.trim();
+
+                if (actualOutput !== expectedOutput) {
+                    return { 
+                        output: actualOutput, 
+                        status: "WA" 
+                    };
+                }
+            }
+
+            return { output: "All test cases passed", status: "SUCCESS" };
 
         } catch (error) {
-
             console.log("Error occurred", error);
-
-            // If time limit exceeded → kill container
-            if (error === "TLE") {
+            if(error === "TLE") {
                 await cppDockerContainer.kill();
             }
-
-            return { output: error as string, status: "ERROR" };
-
+            return {output: error as string, status: "ERROR"}
         } finally {
-
-            // Always remove container (VERY IMPORTANT)
             await cppDockerContainer.remove();
-
         }
     }
 
-    fetchDecodedStream(
-        loggerStream: NodeJS.ReadableStream,
-        rawLogBuffer: Buffer[]
-    ): Promise<string> {
-
+    fetchDecodedStream(loggerStream: NodeJS.ReadableStream, rawLogBuffer: Buffer[]) : Promise<string> {
         return new Promise((res, rej) => {
-
-            // Timeout protection (prevents infinite loops)
             const timeout = setTimeout(() => {
-                console.log("Timeout called");
                 rej("TLE");
-            }, 2000);
-
-            // When docker finishes execution
+            }, 5000); 
+            
             loggerStream.on('end', () => {
-
                 clearTimeout(timeout);
-
-                // Merge all chunks into one buffer
                 const completeBuffer = Buffer.concat(rawLogBuffer);
-
-                // Decode docker multiplexed stream
                 const decodedStream = decodeDockerStream(completeBuffer);
-
-                console.log("Decoded Stream:", decodedStream);
-
-                // Fallback protection (VERY IMPORTANT FIX)
-                const stdout = decodedStream.stdout || "";
-                const stderr = decodedStream.stderr || "";
-
-                // If compilation/runtime error
-                if (stderr) {
-                    rej(stderr);
+                
+                if (decodedStream.stderr && !decodedStream.stdout.includes("COMPILATION_ERROR")) {
+                    res(decodedStream.stderr || decodedStream.stdout); 
                 } else {
-                    res(stdout);
+                    res(decodedStream.stdout);
                 }
-
             });
-
-        });
+        })
     }
-
-    // Normalize output (like real coding platforms)
-    normalize(str: string = ""): string {
-        return str.trim().replace(/\r\n/g, "\n");
-    }
-
 }
 
 export default CppExecutor;

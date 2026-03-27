@@ -18,22 +18,38 @@ export default class SubmissionJob implements IJob {
         console.log("Handler of the job called");
         console.log(this.payload);
         if (job) {
-            const key = Object.keys(this.payload)[0];
-            const codeLanguage = this.payload[key].language;
-            const code = this.payload[key].code;
-            const inputTestCase = this.payload[key].inputCase;
-            const outputTestCase = this.payload[key].outputCase;
-            const strategy = createExecutor(codeLanguage);
-           // console.log(strategy);
-            if (strategy != null) {
-                const response: ExecutionResponse = await strategy.execute(code, inputTestCase, outputTestCase);
-                 evaluationQueueProducer({response, userId: this.payload[key].userId, submissionId: this.payload[key].submissionId});
-                if (response.status === "SUCCESS") {
-                    console.log("✅ Accepted");
-                } else if (response.status === "WA") {
-                    console.log("❌ Wrong Answer");
-                } else if (response.status === "ERROR") {
-                    console.log("⚠️ Execution Error");
+            for (const key of Object.keys(this.payload)) {
+                const submission = this.payload[key];
+                const codeLanguage = submission.language;
+                const code = submission.code;
+                const strategy = createExecutor(codeLanguage);
+
+                if (strategy != null) {
+                    const testCases = submission.testCases || ((submission.inputCase && submission.outputCase) ? [{ input: submission.inputCase, output: submission.outputCase }] : []);
+
+                    if (testCases.length === 0) {
+                        console.error(`No test cases found for submission ${submission.submissionId}`);
+                        continue;
+                    }
+
+                    // Execute all test cases together for efficiency
+                    const response: ExecutionResponse = await strategy.execute(code, testCases);
+
+                    await evaluationQueueProducer({
+                        response,
+                        userId: submission.userId,
+                        submissionId: submission.submissionId
+                    });
+
+                    if (response.status === "SUCCESS") {
+                        console.log("✅ Accepted");
+                    } else if (response.status === "WA") {
+                        console.log("❌ Wrong Answer");
+                    } else if (response.status === "CE") {
+                        console.log("❌ Compilation Error");
+                    } else if (response.status === "ERROR") {
+                        console.log("⚠️ Execution Error");
+                    }
                 }
             }
         }
